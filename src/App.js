@@ -3,6 +3,7 @@ import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import WeatherBox from "./component/WeatherBox";
 import WeatherButton from "./component/WeatherButton";
+import ClipLoader from "react-spinners/ClipLoader";
 
 // 1. 앱이 실행되자마자 현재 위치 기반의 날씨가 보인다.
 // 2. 날씨 정보에는 도시, 섭씨, 화씨, 날씨 상태정보가 보인다.
@@ -14,7 +15,11 @@ function App() {
   // State 설정
   const [weather, setWeather] = useState(null)
   const cities = ['paris', 'new york', 'tokyo', 'seoul']
+  const [city, setCity] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [apiError, setAPIError] = useState("")
 
+  // 현재 위치 가져오기
   const getCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition((position) => {
       let lat = position.coords.latitude;
@@ -25,23 +30,79 @@ function App() {
 
   // 데이터 가져오기
   const getWeatherByCurrentLocation = async (lat, lon) => {
-    let url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${process.env.REACT_APP_API_KEY}`;
-    let response = await fetch(url);
-    let data = await response.json();
-    // console.log(data);
-    setWeather(data);
+    try {
+      let url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${process.env.REACT_APP_API_KEY}`;
+      setLoading(true)
+      let response = await fetch(url);
+      let data = await response.json();
+      // console.log(data);
+      setWeather(data);
+      setLoading(false)
+    } catch (err) {
+      setAPIError(err.message)
+      setLoading(false)
+    }
+    
   };
+
+  // 도시별 날씨 데이터 가져오기
+  const getWeatherByCity = async () => {
+    try {
+      let url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${process.env.REACT_APP_API_KEY}`
+      setLoading(true)
+      let response = await fetch(url)
+      let data = await response.json()
+      // console.log("Data: ", data)
+      setWeather(data);
+      setLoading(false)
+    } catch (err) {
+      console.log(err);
+      setAPIError(err.message)
+      setLoading(false)
+    }
+    
+  }
+
+  const handleCityChange = (city) => {
+    if (city === "current") {
+      setCity("");
+    } else {
+      setCity(city)
+    }
+  }
 
   // 앱이 실행되자마자 >> useEffect사용 & array 빈값: componentDidMount 역할
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+    if (city == "") {
+      getCurrentLocation();
+    } else {
+      getWeatherByCity()
+    }
+  }, [city]);
+
+  // // ComponentDidUpdate 역할. city state가 업데이트 되었는지 확인
+  // useEffect(() => {
+  //   // console.log("City? ", city)
+  //   getWeatherByCity()
+  // }, [city])
   return (
     <div>
+      {loading?(
       <div className="container">
-        <WeatherBox weather={weather} />
-        <WeatherButton cities={cities} />
-      </div>
+      <ClipLoader
+          color="lightblue"
+          loading={loading}
+          size={150}
+          aria-label="Loading Spinner"
+          data-testid="loader"
+        />
+        </div>
+        ) : (
+          <div className="container">
+            <WeatherBox weather={weather} />
+            <WeatherButton cities={cities} handleCityChange={handleCityChange} setCity={setCity} selectedCity={city} />
+          </div>
+        )}
     </div>
   );
 }
